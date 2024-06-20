@@ -196,6 +196,19 @@ export function submitCompose(routerHistory) {
       });
     }
 
+    console.log("Action just happened");
+    if (statusId === null) {
+      console.log({status});
+
+      // eslint-disable-next-line promise/catch-or-return
+      axios.get("http://localhost:3001/greetings").then((response) => {
+        console.log({response});
+      });
+
+    } else {
+      console.log({statusId});
+    }
+
     api(getState).request({
       url: statusId === null ? '/api/v1/statuses' : `/api/v1/statuses/${statusId}`,
       method: statusId === null ? 'post' : 'put',
@@ -251,6 +264,8 @@ export function submitCompose(routerHistory) {
         dismissAfter: 10000,
         onClick: () => routerHistory.push(`/@${response.data.account.username}/${response.data.id}`),
       }));
+
+      console.log({response});
     }).catch(function (error) {
       dispatch(submitComposeFail(error));
     });

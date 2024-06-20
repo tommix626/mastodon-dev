@@ -29,6 +29,8 @@ class ActivityPub::ProcessCollectionService < BaseService
       @json.delete('signature') unless safe_for_forwarding?(original_json, @json)
     end
 
+    # NOTE: this is where the activity go performed. Look downward: process_items calls Activity.perform.
+    # Noly used by inbox_controller.process_payload.
     case @json['type']
     when 'Collection', 'CollectionPage'
       process_items @json['items']
@@ -64,7 +66,7 @@ class ActivityPub::ProcessCollectionService < BaseService
   end
 
   def process_item(item)
-    activity = ActivityPub::Activity.factory(item, @account, **@options)
+    activity = ActivityPub::Activity.factory(item, @account, **@options) #NOTE: item is a json object representing an activitypub message
     activity&.perform
   end
 

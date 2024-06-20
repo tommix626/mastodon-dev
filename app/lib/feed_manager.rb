@@ -251,7 +251,7 @@ class FeedManager
     end
   end
 
-  # Populate home feed of account from scratch
+  # Populate home feed of account from scratch (NOTE: fill homefeed with status of my own and followed users)
   # @param [Account] account
   # @return [void]
   def populate_home(account)
@@ -259,11 +259,14 @@ class FeedManager
     aggregate    = account.user&.aggregates_reblogs?
     timeline_key = key(:home, account.id)
 
+    # NOTE: add user's own statuses, for half of the MAX_ITEMS.
     account.statuses.limit(limit).each do |status|
       add_to_feed(:home, account.id, status, aggregate_reblogs: aggregate)
     end
 
+    # NOTE: Now fill in the rest half with follower's post.
     account.following.includes(:account_stat).reorder(nil).find_each do |target_account|
+      # NOTE:  If the feed is full , skip accounts whose newest post is older than what we looks for.
       if redis.zcard(timeline_key) >= limit
         oldest_home_score = redis.zrange(timeline_key, 0, 0, with_scores: true).first.last.to_i
         last_status_score = Mastodon::Snowflake.id_at(target_account.last_status_at)
@@ -471,11 +474,11 @@ class FeedManager
       # the feed
       rank = redis.zrevrank(timeline_key, status.reblog_of_id)
 
-      return false if !rank.nil? && rank < FeedManager::REBLOG_FALLOFF
+      return false if !rank.nil? && rank < FeedManager::REBLOG_FALLOFF #NOTE: if this reblog is seen before, and within FALLOFF time, then, don;t post again.
 
       # The ordered set at `reblog_key` holds statuses which have a reblog
       # in the top `REBLOG_FALLOFF` statuses of the timeline
-      if redis.zadd(reblog_key, status.id, status.reblog_of_id, nx: true)
+      if redis.zadd(reblog_key, status.id, status.reblog_of_id, nx: true) # NOTE: add this reblog to "ban list", and post it to main timeline.
         # This is not something we've already seen reblogged, so we
         # can just add it to the feed (and note that we're reblogging it).
         redis.zadd(timeline_key, status.id, status.id)
@@ -494,7 +497,7 @@ class FeedManager
       # If such a reblog already exists, just do not re-insert it into the feed.
       return false unless redis.zscore(reblog_key, status.id).nil?
 
-      redis.zadd(timeline_key, status.id, status.id)
+      redis.zadd(timeline_key, status.id, status.id) #NOTE: add a normal post here
     end
 
     true

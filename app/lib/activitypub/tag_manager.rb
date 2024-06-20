@@ -169,7 +169,7 @@ class ActivityPub::TagManager
     uri_to_resource(uri, Account)
   end
 
-  def uri_to_resource(uri, klass)
+  def uri_to_resource(uri, klass) #NOTE: locate status or account by uri
     return if uri.nil?
 
     if local_uri?(uri)

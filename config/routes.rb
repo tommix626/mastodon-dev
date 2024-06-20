@@ -98,7 +98,7 @@ Rails.application.routes.draw do
     end
   end
 
-  devise_for :users, path: 'auth', format: false, controllers: {
+  devise_for :users, path: 'auth', format: false, controllers: {  # NOTE:automatically set the current_user variable
     omniauth_callbacks: 'auth/omniauth_callbacks',
     sessions: 'auth/sessions',
     registrations: 'auth/registrations',

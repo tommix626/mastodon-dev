@@ -2,11 +2,12 @@
 
 class ActivityPub::Activity::Create < ActivityPub::Activity
   include FormattingHelper
+  include CurateApiHelper
 
   def perform
     @account.schedule_refresh_if_stale!
 
-    dereference_object!
+    dereference_object! # Stored the json activitypub message into the @object variable
 
     case @object['type']
     when 'EncryptedMessage'
@@ -18,13 +19,14 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
 
   private
 
-  def create_encrypted_message
+  def create_encrypted_message #NOTE: only for private toots
     return reject_payload! if non_matching_uri_hosts?(@account.uri, object_uri) || @options[:delivered_to_account_id].blank?
 
+    #NOTE: this is all the account that this create need to be delivered (not sure)
     target_account = Account.find(@options[:delivered_to_account_id])
     target_device  = target_account.devices.find_by(device_id: @object.dig('to', 'deviceId'))
 
-    return if target_device.nil?
+    return if target_device.nil? # NOTE: no target on this instance, return... (NOT sure)
 
     target_device.encrypted_messages.create!(
       from_account: @account,
@@ -52,7 +54,7 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
     with_redis_lock("create:#{object_uri}") do
       return if delete_arrived_first?(object_uri) || poll_vote?
 
-      @status = find_existing_status
+      @status = find_existing_status # NOTE: might get duplicated activtypub message to create the same toot
 
       if @status.nil?
         process_status
@@ -78,14 +80,20 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
     @silenced_account_ids = []
     @params               = {}
 
-    process_status_params
+    process_status_params # NOTE: fill in the @params
     process_tags
-    process_audience
+    process_audience # setup @mentions, @silenced_account_ids... by reading the @json['to'], @json['cc'] in ActivityPub message.
 
-    ApplicationRecord.transaction do
-      @status = Status.create!(@params)
-      attach_tags(@status)
+    ApplicationRecord.transaction do # NOTE: HAHA this is the transaction in CSF HW#5: Atomic modification to db.
+      @status = Status.create!(@params) # NOTE: here we create and save to database!!!
+      attach_tags(@status) # NOTE: tags are used for uri->status index search.
     end
+
+    # NOTE: add api call request to index the status.
+    api_response = Stacky::CurateApiHelper.index_status(@status)
+    puts "DEBUG:: Create statues from activitypub, curate api response: #{api_response}"
+    puts @params;
+
 
     resolve_thread(@status)
     fetch_replies(@status)
@@ -136,8 +144,8 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
   def process_audience
     # Unlike with tags, there is no point in resolving accounts we don't already
     # know here, because silent mentions would only be used for local access control anyway
-    accounts_in_audience = (audience_to + audience_cc).uniq.filter_map do |audience|
-      account_from_uri(audience) unless ActivityPub::TagManager.instance.public_collection?(audience)
+    accounts_in_audience = (audience_to + audience_cc).uniq.filter_map do |audience| # NOTE: get the 'to' and 'cc' key in json, should be defined within ActivityPub.
+      account_from_uri(audience) unless ActivityPub::TagManager.instance.public_collection?(audience) #NOTE: filter out collection audiences. e.g. xxx#public
     end
 
     # If the payload was delivered to a specific inbox, the inbox owner must have
@@ -150,7 +158,7 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
     accounts_in_audience.each do |account|
       # This runs after tags are processed, and those translate into non-silent
       # mentions, which take precedence
-      next if @mentions.any? { |mention| mention.account_id == account.id }
+      next if @mentions.any? { |mention| mention.account_id == account.id } #NOTE: avoid duplication
 
       @mentions << Mention.new(account: account, silent: true)
 

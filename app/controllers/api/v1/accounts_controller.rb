@@ -10,7 +10,7 @@ class Api::V1::AccountsController < Api::BaseController
   before_action -> { doorkeeper_authorize! :write, :'write:accounts' }, only: [:create]
 
   before_action :require_user!, except: [:show, :create]
-  before_action :set_account, except: [:create]
+  before_action :set_account, except: [:create] # NOTE: sets the @account variables!
   before_action :check_account_approval, except: [:create]
   before_action :check_account_confirmation, except: [:create]
   before_action :check_enabled_registrations, only: [:create]

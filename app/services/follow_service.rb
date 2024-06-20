@@ -23,7 +23,7 @@ class FollowService < BaseService
     raise ActiveRecord::RecordNotFound if following_not_possible?
     raise Mastodon::NotPermittedError  if following_not_allowed?
 
-    if @source_account.following?(@target_account)
+    if @source_account.following?(@target_account) # NOTE: account::interaction module, included in the account.rb.
       return change_follow_options!
     elsif @source_account.requested?(@target_account)
       return change_follow_request_options!
@@ -36,6 +36,7 @@ class FollowService < BaseService
     # and the feeds are being merged
     mark_home_feed_as_partial! if @source_account.not_following_anyone?
 
+    #NOTE: if-else on whether the target account is on the local instance or not.
     if (@target_account.locked? && !@options[:bypass_locked]) || @source_account.silenced? || @target_account.activitypub?
       request_follow!
     elsif @target_account.local?

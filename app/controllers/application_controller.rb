@@ -148,6 +148,9 @@ class ApplicationController < ActionController::Base
     return @current_account if defined?(@current_account)
 
     @current_account = current_user&.account
+    # puts "TOM DEBUG"
+    # puts @current_account
+    # puts current_user
   end
 
   def current_session

@@ -8,6 +8,7 @@ class ActivityPub::InboxesController < ActivityPub::BaseController
   skip_before_action :authenticate_user!
 
   def create
+    logger.info "InboxesController Received activity from #{signed_request_actor.inbox_url}"
     upgrade_account
     process_collection_synchronization
     process_payload

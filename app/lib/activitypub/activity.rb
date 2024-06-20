@@ -75,6 +75,7 @@ class ActivityPub::Activity
     @object_uri ||= uri_from_bearcap(value_or_id(@object))
   end
 
+  # @note check if object is a string/json
   def unsupported_object_type?
     @object.is_a?(String) || !(supported_object_type? || converted_object_type?)
   end

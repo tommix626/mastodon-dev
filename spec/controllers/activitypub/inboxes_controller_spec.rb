@@ -6,7 +6,7 @@ RSpec.describe ActivityPub::InboxesController do
   let(:remote_account) { nil }
 
   before do
-    allow(controller).to receive(:signed_request_actor).and_return(remote_account)
+    allow(controller).to receive(:signed_request_actor).and_return(remote_account) # proxied the signed_request_actor method to return remote_account.
   end
 
   describe 'POST #create' do
@@ -14,7 +14,7 @@ RSpec.describe ActivityPub::InboxesController do
       let(:remote_account) { Fabricate(:account, domain: 'example.com', protocol: :activitypub) }
 
       before do
-        post :create, body: '{}'
+        post :create, body: '{this is the body}'
       end
 
       it 'returns http accepted' do

@@ -42,9 +42,9 @@ module SignatureVerification
     signed_request_actor.is_a?(Account) ? signed_request_actor : nil
   end
 
-  def signed_request_actor
+  def signed_request_actor # this should be verifying the signature of the request to ensure this comes from the actor itself. Not sure: By checking the Webfinger and the signature of the request?
     return @signed_request_actor if defined?(@signed_request_actor)
-
+    puts "DEBUG:: Signed Request Actor ! Verify Signature"
     raise SignatureVerificationError, 'Request not signed' unless signed_request?
     raise SignatureVerificationError, 'Incompatible request signature. keyId and signature are required' if missing_required_signature_parameters?
     raise SignatureVerificationError, 'Unsupported signature algorithm (only rsa-sha256 and hs2019 are supported)' unless %w(rsa-sha256 hs2019).include?(signature_algorithm)

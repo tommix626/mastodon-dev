@@ -20,7 +20,7 @@ class FeedInsertWorker
     end
 
     with_read_replica do
-      check_and_insert
+      check_and_insert # NOTE: if allowed, insert status into the home/list feed (cached in redis).
     end
   rescue ActiveRecord::RecordNotFound
     true
